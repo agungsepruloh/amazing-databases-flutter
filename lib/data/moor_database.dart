@@ -14,7 +14,7 @@ class Tasks extends Table {
   // Set<Column> get primaryKey => {id, name};
 }
 
-@UseMoor(tables: [Tasks])
+@UseMoor(tables: [Tasks], daos: [TaskDao])
 class AppDatabase extends _$AppDatabase {
   AppDatabase()
       : super(
@@ -24,11 +24,56 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   int get schemaVersion => 1;
+}
 
-  Future<List<Task>> getAllTask() => select(tasks).get();
+// Document Access Object
+@UseDao(
+  tables: [Tasks],
+  queries: {
+    'completedTasksGenerated':
+        'SELECT * FROM tasks WHERE completed = 1 ORDER BY due_date DESC, name;'
+  },
+)
+class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
+  final AppDatabase db;
+  TaskDao(this.db) : super(db);
 
-  Stream<List<Task>> watchAllTask() => select(tasks).watch();
-  Future insertTask(Task task) => into(tasks).insert(task);
-  Future updateTask(Task task) => update(tasks).replace(task);
-  Future deleteTask(Task task) => delete(tasks).delete(task);
+  Future<List<Task>> getAllTasks() => select(tasks).get();
+
+  Stream<List<Task>> watchAllTasks() {
+    return (select(tasks)
+          ..orderBy([
+            (t) => OrderingTerm(
+                  expression: t.dueDate,
+                  mode: OrderingMode.desc,
+                ),
+            (t) => OrderingTerm(
+                  expression: t.name,
+                  mode: OrderingMode.asc,
+                ),
+          ]))
+        .watch();
+  }
+
+  Stream<List<Task>> watchCompletedTasks() {
+    return (select(tasks)
+          ..orderBy([
+            (t) => OrderingTerm(
+                  expression: t.dueDate,
+                  mode: OrderingMode.desc,
+                ),
+            (t) => OrderingTerm(
+                  expression: t.name,
+                  mode: OrderingMode.asc,
+                ),
+          ])
+          ..where(
+            (t) => t.completed.equals(true),
+          ))
+        .watch();
+  }
+
+  Future insertTask(Insertable<Task> task) => into(tasks).insert(task);
+  Future updateTask(Insertable<Task> task) => update(tasks).replace(task);
+  Future deleteTask(Insertable<Task> task) => delete(tasks).delete(task);
 }

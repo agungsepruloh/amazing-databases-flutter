@@ -12,12 +12,11 @@ class Task extends DataClass implements Insertable<Task> {
   final String name;
   final DateTime dueDate;
   final bool completed;
-  Task({
-    this.id,
-    @required this.name,
-    this.dueDate,
-    this.completed,
-  });
+  Task(
+      {@required this.id,
+      @required this.name,
+      this.dueDate,
+      @required this.completed});
   factory Task.fromData(Map<String, dynamic> data, GeneratedDatabase db,
       {String prefix}) {
     final effectivePrefix = prefix ?? '';
@@ -247,6 +246,39 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(SqlTypeSystem.defaultInstance, e);
   $TasksTable _tasks;
   $TasksTable get tasks => _tasks ??= $TasksTable(this);
+  TaskDao _taskDao;
+  TaskDao get taskDao => _taskDao ??= TaskDao(this as AppDatabase);
   @override
   List<TableInfo> get allTables => [tasks];
+}
+
+// **************************************************************************
+// DaoGenerator
+// **************************************************************************
+
+mixin _$TaskDaoMixin on DatabaseAccessor<AppDatabase> {
+  $TasksTable get tasks => db.tasks;
+  Task _rowToTask(QueryRow row) {
+    return Task(
+      id: row.readInt('id'),
+      name: row.readString('name'),
+      dueDate: row.readDateTime('due_date'),
+      completed: row.readBool('completed'),
+    );
+  }
+
+  Selectable<Task> completedTasksGeneratedQuery() {
+    return customSelectQuery(
+        'SELECT * FROM tasks WHERE completed = 1 ORDER BY due_date DESC, name;',
+        variables: [],
+        readsFrom: {tasks}).map(_rowToTask);
+  }
+
+  Future<List<Task>> completedTasksGenerated() {
+    return completedTasksGeneratedQuery().get();
+  }
+
+  Stream<List<Task>> watchCompletedTasksGenerated() {
+    return completedTasksGeneratedQuery().watch();
+  }
 }
