@@ -9,8 +9,13 @@ void main() => runApp(MyApp());
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Provider(
-      create: (_) => AppDatabase().taskDao,
+    final db = AppDatabase();
+
+    return MultiProvider(
+      providers: [
+        Provider(create: (_) => db.taskDao),
+        Provider(create: (_) => db.tagDao),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Flutter Demo',
